@@ -149,9 +149,30 @@ func (s *Scanner) handleExistingDev(oldBd *diskv1.BlockDevice, newBd *diskv1.Blo
 	} else if s.NeedsAutoProvision(oldBd, autoProvisioned) {
 		logrus.Debugf("Enqueue block device %s for auto-provisioning", newBd.Name)
 		s.Blockdevices.Enqueue(s.Namespace, newBd.Name)
+	} else if isDeviceMountsChanged(oldBd, newBd) {
+		oldBd.Status.DeviceStatus.FileSystem = newBd.Status.DeviceStatus.FileSystem
+
+		if oldBd.Status.DeviceStatus.FileSystem.MountPoint == "" {
+			oldBd.Status.State = diskv1.BlockDeviceActive
+		} else {
+			oldBd.Status.State = diskv1.BlockDeviceInactive
+		}
+
+		logrus.Infof("dev %s mounts changed in `%s`", oldBd.Name, oldBd.Status.DeviceStatus.FileSystem.MountPoint)
+
+		if _, err := s.Blockdevices.Update(oldBd); err != nil {
+			logrus.Errorf("Update device %s status error, wake up scanner again: %v", oldBd.Name, err)
+			s.Cond.Signal()
+		}
 	} else {
 		logrus.Debugf("Skip updating device %s", newBd.Name)
 	}
+}
+
+func isDeviceMountsChanged(oldBd *diskv1.BlockDevice, newDb *diskv1.BlockDevice) bool {
+	return oldBd.Status.DeviceStatus.FileSystem.MountPoint != newDb.Status.DeviceStatus.FileSystem.MountPoint ||
+		oldBd.Status.DeviceStatus.FileSystem.Type != newDb.Status.DeviceStatus.FileSystem.Type ||
+		oldBd.Status.DeviceStatus.FileSystem.IsReadOnly != newDb.Status.DeviceStatus.FileSystem.IsReadOnly
 }
 
 func (s *Scanner) deactivateBlockDevices(oldBds map[string]*diskv1.BlockDevice) error {

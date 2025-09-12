@@ -26,6 +26,7 @@ import (
 	"github.com/harvester/node-disk-manager/pkg/filter"
 	ctldisk "github.com/harvester/node-disk-manager/pkg/generated/controllers/harvesterhci.io"
 	ctllonghorn "github.com/harvester/node-disk-manager/pkg/generated/controllers/longhorn.io"
+	"github.com/harvester/node-disk-manager/pkg/mount"
 	"github.com/harvester/node-disk-manager/pkg/option"
 	"github.com/harvester/node-disk-manager/pkg/udev"
 	"github.com/harvester/node-disk-manager/pkg/utils"
@@ -269,6 +270,9 @@ func run(opt *option.Option) error {
 
 		// register to monitor the UDEV events, similar to run `udevadm monitor -u`
 		go udev.NewUdev(opt, scanner).Monitor(ctx)
+
+		// register to monitor the /host/proc/xxx/mounts file changes for mount/unmount events
+		go mount.NewMonitor(opt, scanner).Start(ctx)
 	}
 
 	start(ctx)
