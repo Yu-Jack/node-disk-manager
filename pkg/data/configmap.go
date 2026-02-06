@@ -22,7 +22,7 @@ func addNDMConfigMap(clientset *kubernetes.Clientset) error {
 		},
 		Data: map[string]string{
 			"filters.yaml": `- hostname: "*"
-  excludeLabels: ["COS_*", "HARV_*"]
+  excludeLabels: ["COS_*", "HARV_*", "TEST"]
 `,
 			"autoprovision.yaml": "",
 		},
